@@ -1,6 +1,8 @@
 import geoip from 'fast-geoip';
 import express from 'express';
 import {spawn} from 'child_process';
+import {existsSync} from 'fs';
+
 export default async function getDoxInfo(
 	req: express.Request
 ): Promise<string[]> {
@@ -52,12 +54,18 @@ if (require.main === module) {
 	app.enable('trust proxy');
 
 	app.get('/', async (req, res) => {
+		const outputVideo = `${__dirname}/out/${req.ip}.mp4`;
+
+		if (existsSync(outputVideo)) {
+			res.sendFile(outputVideo);
+			return;
+		}
+
 		const funnyLines = await getDoxInfo(req);
 		const env = {
 			...process.env,
 			REMOTION_DOX_LINES: JSON.stringify(funnyLines),
 		};
-		const outputVideo = `${__dirname}/out/${Date.now()}_${req.ip}.mp4`;
 		const child = spawn(
 			'npx',
 			['remotion', 'render', 'src/index.tsx', 'MyComp', outputVideo],
@@ -77,5 +85,5 @@ if (require.main === module) {
 		res.sendFile(outputVideo);
 	});
 
-	app.listen(3091);
+	app.listen(3091, '0.0.0.0');
 }
